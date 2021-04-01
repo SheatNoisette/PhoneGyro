@@ -2,7 +2,7 @@
 
 import asyncio
 import sys
-import websockets
+import websocket
 from pynput.mouse import Button, Controller
 from threading import Thread, Event
 from math import *
@@ -38,6 +38,7 @@ def message_queue_empty(queue):
 # -------------------------
 # Maths
 
+
 def clamp(num, min_value, max_value):
     """ Clamp a value between two values """
     return max(min(num, max_value), min_value)
@@ -49,6 +50,7 @@ def normalize(value, minval, maxval):
 
 # -------------------------
 # Debugging
+
 
 def parse_data_raw(message):
     out = {}
@@ -73,7 +75,6 @@ def format_data_debug(message):
     print("Omega: ", content["omega"])
 
 
-
 def move_mouse(parsed_data):
     new_height = (
         1 - normalize(parsed_data["beta"], up_min, up_max)) * screenHeight
@@ -83,21 +84,54 @@ def move_mouse(parsed_data):
                       clamp(new_height, 0, screenHeight - 1))
 
 
-def main_loop():
-    while True:
-        while not message_queue_empty():
-            move_mouse(parse_data_raw(message_queue.pop()))
-
-async def main_loop_async(websocket, path):
+"""
     async for message in websocket:
         format_data_debug(message)
         # message_queue.append(message)
         move_mouse(parse_data_raw(message))
+"""
+
+
+def on_message(ws, message):
+    '''
+        This method is invoked when ever the client
+        receives any message from server
+    '''
+    print("received message as {}".format(message))
+    print("sending 'hello again'")
+
+
+def on_error(ws, error):
+    '''
+        This method is invoked when there is an error in connectivity
+    '''
+    print("received error as {}".format(error))
+
+
+def on_close(ws):
+    '''
+        This method is invoked when the connection between the 
+        client and server is closed
+    '''
+    print("Connection closed")
+
+
+def on_open(ws):
+    '''
+        This method is invoked as soon as the connection between
+                client and server is opened and only for the first time
+    '''
+    print("Client connected")
+
 
 def websocket_server(server_ip, server_port):
-        start_server = websockets.serve(main_loop_async, server_ip, server_port)
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().run_forever()
+    websocket.enableTrace(True)
+    ws = websocket.WebSocketApp("ws:// "+server_ip + ":"+server_port "/",
+                                on_message=on_message,
+                                on_error=on_error,
+                                on_close=on_close)
+    ws.on_open = on_open
+    ws.run_forever()
 
 
 # Get arguments
@@ -117,6 +151,4 @@ if __name__ == "__main__":
 
     print("Stating server on " + server_ip + ":" + str(server_port) + "...")
 
-
     websocket_server(server_ip, server_port)
-
