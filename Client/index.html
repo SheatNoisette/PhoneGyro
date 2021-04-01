@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Gyro Client</title>
+    <meta charset="UTF8" />
+</head>
+
+<body>
+    <h1>Gyro</h1>
+    <p>Print values: </p>
+    <input type="checkbox" id="print_vals">
+    <p class="absolute"></p>
+    <p class="alpha"></p>
+    <p class="beta"></p>
+    <p class="gamma"></p>
+
+    <div>
+        <h1>Server IP</h1>
+        <input type="text" name="ip_svr" value="192.168.x.x">
+        <button onclick="get_server();">Connect</button>
+        <h2>Status</h2>
+        <p class="server_result">Not connected</p>
+        <p class="command_sent">0</p>
+
+
+        <div>
+            <h2>Rate:</h2>
+            <div class="slidecontainer">
+                <input type="range" min="1" max="100" value="100" class="range_transmission">
+            </div>
+        </div>
+    </div>
+    <script src="client.js"></script>
+</body>
+
+</html>
