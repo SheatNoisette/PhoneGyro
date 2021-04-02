@@ -16,27 +16,11 @@ width_min = 70
 
 # Screen
 screenWidth, screenHeight = 1920, 1080
-
 mouse = Controller()
 
-# Message queue used
-message_queue = []
-MAX_MESSAGES_WAITING = 30
-
-
-# -------------------------
-# Message queue
-
-def message_queue_push(queue, element):
-    if len(message_queue) == MAX_MESSAGES_WAITING:
-        queue.pop()
-    queue.append(element)
-
-
-def message_queue_empty(queue):
-    return len(queue) == 0
 # -------------------------
 # Maths
+
 
 def clamp(num, min_value, max_value):
     """ Clamp a value between two values """
@@ -50,6 +34,7 @@ def normalize(value, minval, maxval):
 # -------------------------
 # Debugging
 
+
 def parse_data_raw(message):
     out = {}
     message = message.split(";")
@@ -57,6 +42,7 @@ def parse_data_raw(message):
     out["alpha"] = float(message[1])
     out["beta"] = float(message[2])
     out["omega"] = float(message[3])
+    out["calibration"] = int(message[4])
 
     return out
 
@@ -65,39 +51,62 @@ def format_data_debug(message):
     """
         Print raw data from the client
     """
-    content = parse_data_raw(message)
+    print("Absolute: ", message["absolute"])
+    print("Alpha: ", message["alpha"])
+    print("Beta: ", message["beta"])
+    print("Omega: ", message["omega"])
+    print("Calibration: ", message["calibration"])
 
-    print("Absolute: ", content["absolute"])
-    print("Alpha: ", content["alpha"])
-    print("Beta: ", content["beta"])
-    print("Omega: ", content["omega"])
 
+def calibration(message_parsed):
+    if message_parsed["calibration"] == 1:
+        format_data_debug(message_parsed)
+        up_max = message_parsed["alpha"]
+        width_min = message_parsed["beta"]
+        print("TOP: ", up_max, width_min)
+    elif message_parsed["calibration"] == 2:
+        format_data_debug(message_parsed)
+        up_min = message_parsed["alpha"]
+        width_max = message_parsed["beta"]
+        print("DOWN: ", up_min, width_max)
 
+def fix_offset(v_min, v_max):
+
+    if v_min < v_max:
+        return v_min, v_max
+
+    offset = v_max
+    v_max -= offset
+    v_min += offset
+
+    print("CORRECTED: ", v_min, v_max)
+    return v_min, v_max
 
 def move_mouse(parsed_data):
+
+    up_min_f, up_max_f = fix_offset(up_min, up_max)
+    width_min_f, width_max_f = fix_offset(up_min, up_max)
+
     new_height = (
-        1 - normalize(parsed_data["beta"], up_min, up_max)) * screenHeight
+        1 - normalize(parsed_data["beta"], up_min_f, up_max_f)) * screenHeight
     new_width = (
-        1 - normalize(parsed_data["alpha"], width_min, width_max)) * screenWidth
+        1 - normalize(parsed_data["alpha"], width_min_f, width_max_f)) * screenWidth
     mouse.position = (clamp(new_width, 0, screenWidth - 1),
                       clamp(new_height, 0, screenHeight - 1))
 
 
-def main_loop():
-    while True:
-        while not message_queue_empty():
-            move_mouse(parse_data_raw(message_queue.pop()))
-
 async def main_loop_async(websocket, path):
     async for message in websocket:
-        format_data_debug(message)
-        # message_queue.append(message)
-        move_mouse(parse_data_raw(message))
+        data = parse_data_raw(message)
+        calibration(data)
+        format_data_debug(data)
+        move_mouse(data)
+
 
 def websocket_server(server_ip, server_port):
-        start_server = websockets.serve(main_loop_async, server_ip, server_port)
-        asyncio.get_event_loop().run_until_complete(start_server)
-        asyncio.get_event_loop().run_forever()
+    start_server = websockets.serve(main_loop_async, server_ip, server_port)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
 
 
 # Get arguments
@@ -117,6 +126,4 @@ if __name__ == "__main__":
 
     print("Stating server on " + server_ip + ":" + str(server_port) + "...")
 
-
     websocket_server(server_ip, server_port)
-
