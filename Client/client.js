@@ -11,6 +11,9 @@ var connected_to_server = false;
 var server_ip = null;
 var socket = null;
 var command_sent = 0;
+// This request the server a calibration
+// 0 => None; 1 => Top left; 2 => Bottom Right
+var request_calibration = 0;
 
 const abs_class = document.getElementsByClassName("absolute")[0];
 const alpha_class = document.getElementsByClassName("alpha")[0];
@@ -21,7 +24,7 @@ const cb = document.getElementById('print_vals');
 
 var command_queue = [];
 
-function build_command_gyro(absolute, alpha, beta, gamma) {
+function build_command_gyro(absolute, alpha, beta, gamma, calibration) {
     var out = ""
 
     if (absolute)
@@ -31,9 +34,18 @@ function build_command_gyro(absolute, alpha, beta, gamma) {
 
     out += alpha + ";";
     out += beta + ";";
-    out += gamma;
+    out += gamma + ";";
+    out += calibration;
 
     return out;
+}
+
+function request_calibration_top() {
+    request_calibration = 1;
+}
+
+function request_calibration_bottom() {
+    request_calibration = 2;
 }
 
 /*
@@ -99,8 +111,10 @@ function handleOrientation(event) {
     if (connected_to_server) {
         command_sent += 1;
         sent_command_element.innerText = command_queue.length;
-        command_queue.push(build_command_gyro(absolute, alpha, beta, gamma));
+        command_queue.push(build_command_gyro(absolute, alpha, beta, gamma, request_calibration));
         socket.send(command_queue.pop());
+        // Reset calibration
+        request_calibration = 0;
     }
 }
 
